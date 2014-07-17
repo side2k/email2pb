@@ -2,6 +2,7 @@ import argparse
 import base64
 import email
 import json
+import re
 from subprocess import Popen, PIPE, STDOUT
 import sys
 
@@ -24,7 +25,15 @@ if debug_mode:
 msg = email.message_from_file(args.infile)
 args.infile.close()
 
-subject = msg.get('Subject')
+subject_raw = msg.get('Subject')
+match = re.match(r'\=\?([^\?]+)\?([BQ])\?([^\?]+)\?\=', subject_raw)
+if match:
+    charset, encoding, subject_coded = match.groups()
+    if encoding == 'B':
+        subject_coded = base64.decodestring(subject_coded)
+    subject = subject_coded.decode(charset)
+else: 
+    subject = subject_raw
 body_text = ''
 for part in msg.walk():
     if part.get_content_type() == 'text/plain':
