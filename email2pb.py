@@ -25,7 +25,7 @@ if debug_mode:
 msg = email.message_from_file(args.infile)
 args.infile.close()
 
-subject_raw = msg.get('Subject')
+subject_raw = msg.get('Subject', '')
 match = re.match(r'\=\?([^\?]+)\?([BQ])\?([^\?]+)\?\=', subject_raw)
 if match:
     charset, encoding, subject_coded = match.groups()
