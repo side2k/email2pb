@@ -11,6 +11,7 @@ API_URL = 'https://api.pushbullet.com/api/pushes'
 PUSH_TYPE = 'note'
 
 TRACE_FILE = 'curl.trace'
+DEFAULT_ENCODING = 'utf-8'
 
 parser = argparse.ArgumentParser(description='Send PushBullet PUSH based on email message')
 parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
@@ -34,13 +35,14 @@ if match:
     subject = subject_coded.decode(charset)
 else: 
     subject = subject_raw
+
 body_text = ''
 for part in msg.walk():
     if part.get_content_type() == 'text/plain':
         body_part = part.get_payload()
         if part.get('Content-Transfer-Encoding', 'base64') == 'base64':
             body_part = base64.decodestring(body_part)
-
+        body_part = body_part.decode(part.get_content_charset())
         if body_text:
             body_text = '%s\n%s' % (body_text, body_part)
         else:
@@ -55,7 +57,7 @@ push_headers = {
 program = CURL_PROGRAM
 cmdline = [program, API_URL, '-s', '-u', '%s:' % args.key, '-X', 'POST']
 header_pairs = [['-d', '%s=%s' % (header, data)] for header, data in push_headers.iteritems()]
-cmdline += [item.encode() for sublist in header_pairs for item in sublist]
+cmdline += [item.encode(DEFAULT_ENCODING) for sublist in header_pairs for item in sublist]
 if debug_mode:
     cmdline += ['--trace-ascii', TRACE_FILE]
     print 'Command line:'
