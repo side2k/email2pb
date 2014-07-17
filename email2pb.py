@@ -55,7 +55,7 @@ push_headers = {
 program = CURL_PROGRAM
 cmdline = [program, API_URL, '-s', '-u', '%s:' % args.key, '-X', 'POST']
 header_pairs = [['-d', '%s=%s' % (header, data)] for header, data in push_headers.iteritems()]
-cmdline += [item for sublist in header_pairs for item in sublist]
+cmdline += [item.encode() for sublist in header_pairs for item in sublist]
 if debug_mode:
     cmdline += ['--trace-ascii', TRACE_FILE]
     print 'Command line:'
