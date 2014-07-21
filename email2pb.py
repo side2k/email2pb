@@ -26,15 +26,20 @@ if debug_mode:
 msg = email.message_from_file(args.infile)
 args.infile.close()
 
+def decode_field(field_raw):
+    match = re.match(r'\=\?([^\?]+)\?([BQ])\?([^\?]+)\?\=', field_raw)
+    if match:
+        charset, encoding, field_coded = match.groups()
+        if encoding == 'B':
+            field_coded = base64.decodestring(field_coded)
+        return field_coded.decode(charset)
+    else: 
+        return field_raw
+
 subject_raw = msg.get('Subject', '')
-match = re.match(r'\=\?([^\?]+)\?([BQ])\?([^\?]+)\?\=', subject_raw)
-if match:
-    charset, encoding, subject_coded = match.groups()
-    if encoding == 'B':
-        subject_coded = base64.decodestring(subject_coded)
-    subject = subject_coded.decode(charset)
-else: 
-    subject = subject_raw
+subject = decode_field(subject_raw)
+
+sender = decode_field(msg.get('From', ''))
 
 body_text = ''
 for part in msg.walk():
@@ -47,6 +52,8 @@ for part in msg.walk():
             body_text = '%s\n%s' % (body_text, body_part)
         else:
             body_text = body_part
+
+body_text = '%s\nFrom: %s' % (body_text, sender)
 
 push_headers = {
     'type': PUSH_TYPE,
