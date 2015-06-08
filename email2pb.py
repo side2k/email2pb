@@ -50,6 +50,9 @@ for part in msg.walk():
         part_encoding = part.get_content_charset()
         if part_encoding:
             body_part = body_part.decode(part_encoding)
+        else:
+            body_part = body_part.decode()
+
         if body_text:
             body_text = '%s\n%s' % (body_text, body_part)
         else:
