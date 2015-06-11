@@ -45,7 +45,7 @@ body_text = ''
 for part in msg.walk():
     if part.get_content_type() == 'text/plain':
         body_part = part.get_payload()
-        if part.get('Content-Transfer-Encoding', 'base64') == 'base64':
+        if part.get('Content-Transfer-Encoding') == 'base64':
             body_part = base64.decodestring(body_part)
         part_encoding = part.get_content_charset()
         if part_encoding:
