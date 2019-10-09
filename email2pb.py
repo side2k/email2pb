@@ -2,16 +2,15 @@ import argparse
 import base64
 import email
 import json
+import logging
 import re
-from subprocess import Popen, PIPE, STDOUT
 import sys
 
-CURL_PROGRAM = 'curl'
-API_URL = 'https://api.pushbullet.com/api/pushes'
-PUSH_TYPE = 'note'
+from pushbullet import PushbulletAPIClient
 
-TRACE_FILE = 'curl.trace'
-DEFAULT_ENCODING = 'utf-8'
+
+logger = logging.getLogger(__name__)
+
 
 parser = argparse.ArgumentParser(description='Send PushBullet PUSH based on email message')
 parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
@@ -21,7 +20,7 @@ parser.add_argument('--debug', help='Enable debug mode', action='store_true')
 args = parser.parse_args()
 debug_mode = args.debug
 if debug_mode:
-    print 'Debug mode enabled'
+    logger.debug('Debug mode enabled')
 
 msg = email.message_from_file(args.infile)
 args.infile.close()
@@ -31,6 +30,7 @@ def decode_field(field_raw):
     if match:
         charset, encoding, field_coded = match.groups()
         if encoding == 'B':
+            field_coded = bytearray(field_coded, encoding=charset)
             field_coded = base64.decodestring(field_coded)
         return field_coded.decode(charset)
     else: 
@@ -45,9 +45,10 @@ body_text = ''
 for part in msg.walk():
     if part.get_content_type() == 'text/plain':
         body_part = part.get_payload()
-        if part.get('Content-Transfer-Encoding', 'base64') == 'base64':
-            body_part = base64.decodestring(body_part)
         part_encoding = part.get_content_charset()
+        if part.get('Content-Transfer-Encoding', 'base64') == 'base64':
+            body_part = bytearray(body_part, encoding=part_encoding)
+            body_part = base64.decodestring(body_part)
         if part_encoding:
             body_part = body_part.decode(part_encoding)
         else:
@@ -60,45 +61,5 @@ for part in msg.walk():
 
 body_text = '%s\nFrom: %s' % (body_text, sender)
 
-push_headers = {
-    'type': PUSH_TYPE,
-    'title': subject,
-    'body': body_text,
-}
-
-program = CURL_PROGRAM
-cmdline = [program, API_URL, '-s', '-u', '%s:' % args.key, '-X', 'POST']
-header_pairs = [['-d', '%s=%s' % (header, data)] for header, data in push_headers.iteritems()]
-cmdline += [item.encode(DEFAULT_ENCODING) for sublist in header_pairs for item in sublist]
-if debug_mode:
-    cmdline += ['--trace-ascii', TRACE_FILE]
-    print 'Command line:'
-    print '----------'
-    print ' '.join(cmdline)
-    print '----------'
-
-process = Popen(cmdline, stdout=PIPE, stderr=STDOUT)
-stdout, stdin = process.communicate()
-exit_code = process.returncode
-if exit_code:
-    print '%s returned exit code %d' % (program, exit_code)
-    print 'Output:'
-    print '---------'
-    print stdout
-    print '---------'
-    sys.exit(exit_code)
-else:
-    try:
-        server_response = json.loads(stdout)
-    except:
-        if debug_mode:
-            print 'Server response was not JSON:'
-            print '--------------'
-            print stdout
-            print '--------------'
-        raise
-    error = server_response.get('error')
-    if error:
-        print 'Server returned error:'
-        print error.get('message')
-        sys.exit(1)
+client = PushbulletAPIClient(api_key=args.key)
+client.push_note_to_device(None, body_text, title=subject)
