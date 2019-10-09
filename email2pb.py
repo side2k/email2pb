@@ -18,6 +18,7 @@ parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sy
     help='MIME-encoded email file(if empty, stdin will be used)')
 parser.add_argument('--key', help='API key for PushBullet', required=True)
 parser.add_argument('--debug', help='Enable debug mode', action='store_true')
+parser.add_argument("--debug_log", type=str)
 args = parser.parse_args()
 
 stdin_data = args.infile.read()
@@ -26,7 +27,8 @@ stdin_data = args.infile.read()
 debug_mode = args.debug
 if debug_mode:
     logger.debug('Debug mode enabled')
-    with open("debug.log", "w") as debug_log:
+    logfile_path = args.debug_log or "debug.log"
+    with open(logfile_path, "w") as debug_log:
         debug_log.write("\n")
         debug_log.write("Incoming message:\n")
         debug_log.write("-------------------------\n")
