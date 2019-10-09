@@ -1,6 +1,7 @@
 import argparse
 import base64
 import email
+from io import BytesIO
 import json
 import logging
 import re
@@ -18,11 +19,21 @@ parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sy
 parser.add_argument('--key', help='API key for PushBullet', required=True)
 parser.add_argument('--debug', help='Enable debug mode', action='store_true')
 args = parser.parse_args()
+
+stdin_data = args.infile.read()
+
+
 debug_mode = args.debug
 if debug_mode:
     logger.debug('Debug mode enabled')
+    with open("debug.log", "w") as debug_log:
+        debug_log.write("\n")
+        debug_log.write("Incoming message:\n")
+        debug_log.write("-------------------------\n")
+        debug_log.write(stdin_data)
+        debug_log.write("-------------------------\n")
 
-msg = email.message_from_file(args.infile)
+msg = email.message_from_string(stdin_data)
 args.infile.close()
 
 def decode_field(field_raw):
