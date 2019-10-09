@@ -1,8 +1,6 @@
 import argparse
 import base64
 import email
-from io import BytesIO
-import json
 import logging
 import re
 import sys
@@ -14,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 parser = argparse.ArgumentParser(description='Send PushBullet PUSH based on email message')
-parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
+parser.add_argument(
+    'infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
     help='MIME-encoded email file(if empty, stdin will be used)')
 parser.add_argument('--key', help='API key for PushBullet', required=True)
 parser.add_argument('--debug', help='Enable debug mode', action='store_true')
@@ -46,7 +45,7 @@ def decode_field(field_raw):
             field_coded = bytearray(field_coded, encoding=charset)
             field_coded = base64.decodestring(field_coded)
         return field_coded.decode(charset)
-    else: 
+    else:
         return field_raw
 
 subject_raw = msg.get('Subject', '')
@@ -59,13 +58,11 @@ for part in msg.walk():
     if part.get_content_type() == 'text/plain':
         body_part = part.get_payload()
         part_encoding = part.get_content_charset()
+
         if part.get('Content-Transfer-Encoding') == 'base64':
             body_part = bytearray(body_part, encoding=part_encoding)
             body_part = base64.decodestring(body_part)
-        if part_encoding:
             body_part = body_part.decode(part_encoding)
-        else:
-            body_part = body_part.decode()
 
         if body_text:
             body_text = '%s\n%s' % (body_text, body_part)
