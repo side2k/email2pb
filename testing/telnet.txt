@@ -1,0 +1,13 @@
+From push@hassio  Thu Jan  2 23:21:07 2020
+Return-Path: <push@hassio>
+X-Original-To: push
+Delivered-To: push@hassio
+Received: from hassio (localhost [127.0.0.1])
+        by hassio (Postfix) with ESMTPA id 8ADC1BA01
+        for <push>; Thu,  2 Jan 2020 23:20:44 -0600 (CST)
+Subject: test data
+Message-Id: <20200103052059.8ADC1BA01@hassio>
+Date: Thu,  2 Jan 2020 23:20:44 -0600 (CST)
+From: push@hassio
+
+test body
