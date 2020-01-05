@@ -1,40 +1,41 @@
 import argparse
 import base64
 import email
+import io
 import logging
-import nltk   
 import os
 import re
 import sys
 
+from logging.handlers import RotatingFileHandler
 from pushbullet import Pushbullet
 
-logger = logging.getLogger(__name__)
 
 # Read arguments
-parser = argparse.ArgumentParser(description='Send PushBullet PUSH based on email message')
+parser = argparse.ArgumentParser(description="Send PushBullet PUSH based on email message")
 parser.add_argument(
-    'infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
-    help='MIME-encoded email file(if empty, stdin will be used)')
-parser.add_argument('--key', help='API key for PushBullet', required=True)
-parser.add_argument('--debug', help='Enable debug mode', action='store_true')
-parser.add_argument("--debug_log", type=str)
+    "infile", 
+    nargs="?", 
+    type=argparse.FileType("r"), 
+    default=sys.stdin,
+    help="MIME-encoded email file(if empty, stdin will be used)")
+parser.add_argument("--key", help="API key for PushBullet", required=True)
+parser.add_argument("--log_level", default="40", help="10=debug 20-info 30=warning 40=error", type=int)
+parser.add_argument("--log_file", default="email2pb.log", help="Log file location", type=str)
 args = parser.parse_args()
 
-# Read stdin and write it out if needed
-stdin_data = args.infile.read()
-debug_mode = args.debug
-if debug_mode:
-    logger.debug('Debug mode enabled')
-    logfile_path = args.debug_log or "debug.log"
-    with open(logfile_path, "w") as debug_log:
-        debug_log.write("\n")
-        debug_log.write("Incoming message:\n")
-        debug_log.write("-------------------------\n")
-        debug_log.write(stdin_data)
-        debug_log.write("-------------------------\n")
+# Configure logging
+logger = logging.getLogger(__name__)
+handler = RotatingFileHandler(args.log_file, mode='a', maxBytes=1024*1024, backupCount=1)
+handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler) 
+logger.setLevel(args.log_level)
+logger.debug(args)
 
+# Read infile (is stdin if no arg) 
+stdin_data = args.infile.read()
 args.infile.close()
+logger.debug("\n" + stdin_data)
 
 # Parse stdin
 pb = Pushbullet(args.key)
@@ -45,26 +46,23 @@ text = parts[0]
 text = re.findall("\n\n(.*)", text)[0] # Remove header info
 text = re.sub(r"(?is)<(script|style).*?>.*?(</\1>)", "", text.strip()) # Remove style tags
 text = re.sub(r"(?s)<.*?>", " ", text).strip() # Get text content
+logger.debug("Found text: " + text)
 
 # Hardcoded: Only interested in channel 2
 if(not re.findall("Event:Motion detect in video channel 2", text)):
-    print("Not channel 2:")
-    print(text)
-    quit()
+    logger.error("Not channel 2: " + text)
+    # quit()
 
-# Write out the base64 data to image file
+# Parse the base64 image data and upload to pushbullet
 image_part = parts[1]
 file_name = re.findall("name=\"(.*?)\"", image_part)[0]
-base64_image = re.findall("\n\n(.*)", image_part)[0].strip()
-with open(file_name, "wb") as fh:
-    fh.write(base64_image.decode('base64'))
-
-# Upload the image to pushbullet
-with open(file_name, "rb") as pic:
-    file_data = pb.upload_file(pic, file_name)
+base64_data = re.findall("\n\n(.*)", image_part)[0].strip()
+file = io.BytesIO(base64_data.decode('base64'))
+logger.debug("Uploading " + file_name)
+# file_data = pb.upload_file(file, file_name)
 
 # Send push
-push = pb.push_file(body = text, **file_data)
+logger.debug("Sending push")
+# push = pb.push_file(body = text, **file_data)
 
-# Delete the image
-os.remove(file_name)
+logger.info("Successfully pushed: " + text)
