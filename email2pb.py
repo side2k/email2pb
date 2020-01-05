@@ -7,6 +7,7 @@ import os
 import re
 import sys
 
+from datetime import date
 from logging.handlers import RotatingFileHandler
 from pushbullet import Pushbullet
 
@@ -35,34 +36,30 @@ logger.debug(args)
 # Read infile (is stdin if no arg) 
 stdin_data = args.infile.read()
 args.infile.close()
-logger.debug("\n" + stdin_data)
-
-# Parse stdin
-pb = Pushbullet(args.key)
-parts = stdin_data.split("--=======JUAN_SMTP_V1_0=======")
+logger.debug("in:\n" + stdin_data)
+msg_parts = email.message_from_string(stdin_data).get_payload()
 
 # Parse out the text
-text = parts[0]
-text = re.findall("\n\n(.*)", text)[0] # Remove header info
-text = re.sub(r"(?is)<(script|style).*?>.*?(</\1>)", "", text.strip()) # Remove style tags
-text = re.sub(r"(?s)<.*?>", " ", text).strip() # Get text content
+html = msg_parts[0].get_payload()
+clean_html = re.sub(r"(?is)<(script|style).*?>.*?(</\1>)", "", html.strip()) # Remove style tags
+text = re.sub(r"(?s)<.*?>", " ", clean_html).strip() # Get text content
 logger.debug("Found text: " + text)
 
 # Hardcoded: Only interested in channel 2
 if(not re.findall("Event:Motion detect in video channel 2", text)):
     logger.error("Not channel 2: " + text)
-    # quit()
+    quit()
 
 # Parse the base64 image data and upload to pushbullet
-image_part = parts[1]
-file_name = re.findall("name=\"(.*?)\"", image_part)[0]
-base64_data = re.findall("\n\n(.*)", image_part)[0].strip()
-file = io.BytesIO(base64_data.decode('base64'))
+image_part = msg_parts[1].get_payload()
+file_name = date.today().strftime("%Y-%m-%d") + "_" + re.findall("name=\"(.*?)\"", msg_parts[1]["Content-Type"])[0]
+file = io.BytesIO(image_part.decode('base64'))
 logger.debug("Uploading " + file_name)
-# file_data = pb.upload_file(file, file_name)
+pb = Pushbullet(args.key)
+file_data = pb.upload_file(file, file_name)
 
 # Send push
 logger.debug("Sending push")
-# push = pb.push_file(body = text, **file_data)
+push = pb.push_file(body = text, **file_data)
 
 logger.info("Successfully pushed: " + text)
