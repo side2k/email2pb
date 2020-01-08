@@ -1,44 +1,54 @@
-Email 2 PushBullet
-========
+# Email 2 PushBullet
 
-Email to PushBullet notification
+**Email to PushBullet notification**
+
+This simple script allows to redirect mail input (from postfix, for example) to PushBullet notification. Useful to send pushes from sources which are able to send email only. It supports multipart emails with plaintext, html, and jpg parts. 
+
+Note: This requires [pushbullet.py](https://github.com/rbrcsk/pushbullet.py).
 
 
-This simple script allows to redirect mail input(from postfix, for example) from a certain mail address to PushBullet notification. Useful to send pushes from sources which are able to send email only.
+## Example usage
 
+Let's imagine that we want to redirect all emails sent to push@example.com to your PushBullet account (and therefore to your mobile devices, browser excensions, etc)
+Keep in mind that instructions below were tested on Debian with Python 2.6 and Raspbian with Python 2.7. 
 
-### Example usage
+### Step 0: Setup and configure postfix for domain example.com and other prerequisites
 
-Lets imagine that we want to redirect all emails sent to push@example.com to your PushBullet account(and therefore to your mobile devices, browser excensions, etc)
-Keep in mind that instructions below were tested on Debian 6 with python 2.6
-So, thats what you should do:
+[This tutorial](https://www.stewright.me/2012/09/tutorial-install-postfix-to-allow-outgoing-email-on-raspberry-pi/) is super short but a good place to get your feet wet if you are coming from nothing. 
 
-#### Step zero: setup and configure postfix for domain example.com and other prerequisites
+[This tutorial](https://samhobbs.co.uk/2013/12/raspberry-pi-email-server-part-1-postfix) goes more in-depth. 
 
-Bla-bla-bla
+### Step 1: Create shell script
 
-#### Step 1: create shell script
+First, create shell script which will contain the email2pb call with any arguments you woud like. This is needed so the API key is not saved in the repository. 
 
-First, create shell script which will contain email2pb call and an API key. If you will directly specify python script with a API key in aliases file - this'll be a major security hole.
-So our script will be something like this:
+Let's name it `/var/spool/postfix/email2pb/email2pb`.
+
+Why there? Tested in Debian and Raspbian, and postfix's home dir is /var/spool/postfix.
+Rememer, postfix should be able to acces your script.
+
+The script will be something like this:
 
 ```
 #!/bin/sh
-/usr/bin/python /var/spool/postfix/email2pb/email2pb.py --key YOUR_PUSHBULLET_API_KEY
+/usr/bin/python /var/spool/postfix/email2pb/email2pb.py --key YOUR_PUSHBULLET_API_KEY --log_level 10 --log_file "/var/spool/postfix/email2pb/email2pb.log"
 ```
+Feel free to change/remove `log_level` or `log_file` as needed.
 
-Let's name it...umm... `/var/spool/postfix/email2pb/email2pb`
-And make it executable:
+Make the script executable:
 
 ```
 chmod +x /var/spool/postfix/email2pb/email2pb
 ```
 
-Why there? My example was tested in Debian, and postfix's home dir on Debian 6 is /var/spool/postfix
-Rememer, postfix should be able to acces your script.
+Make the log file writeable:
+
+```
+chmod +w /var/spool/postfix/email2pb/email2pb.log
+```
 
 
-#### Step 2: add mail alias
+### Step 2: Add mail alias
 
 Open /etc/aliases file and append a line there:
 
@@ -47,9 +57,9 @@ push: |/var/spool/postfix/email2pb/email2pb
 ```
 Save the file and execute `newaliases` command.
 
-#### Step 3: test it
 
-Send email to push@example.com and, if it didn't work, check /var/log/mail.log
+### Step 3: Test it
 
+Send email to push@example.com and, if it didn't work, check /var/log/mail.log. If it did work you should receieve the push. 
 
-Thats it.
+That's it.
